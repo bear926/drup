@@ -1,0 +1,345 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function dcm_ajax_example_menu() {
+
+  $items['dcm_ajax/%node/%'] = array(
+    'page callback' => 'dcm_ajax_example_page_ajax_callback',
+    'page arguments' => array(1, 2),
+    'access callback' => TRUE,
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'type' => MENU_CALLBACK,
+    'file' => 'dcm_ajax_example.pages.inc',
+  );
+
+
+
+  $items['dcm_ajax_example'] = array(
+    'title' => 'Drupal Ajax',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('dcm_ajax_example_form'),
+    'access arguments' => array('view dcm ajax example'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function dcm_ajax_example_permission() {
+  return array(
+    'view dcm ajax example' => array(
+      'title' => t('View DCM Ajax example page'),
+    ),
+  );
+}
+
+/**
+ * Ajax example FORM.
+ */
+function dcm_ajax_example_form($form, $form_state) {
+
+  $form['#prefix'] = '<div id="dcm-ajax-example-form-wrapper">';
+  $form['#suffix'] = '</div>';
+
+  $form['fild'] = array(
+    '#type'  => 'textfield',
+  );
+  /*
+  $terms_link = array(
+    '#type' => 'link',
+    '#href' => 'dcm_ajax/20/nojs',
+    '#title' => t('terms of use'),
+    '#attributes' => array(
+      'class' => array('use-ajax'),
+    ),
+  );*/
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add text'),
+    '#ajax' => array(
+      'callback' => 'dcm_ajax_example_form_ajax_callback',
+      'wrapper' => 'dcm-ajax-example-form-wrapper',
+    ),
+  );
+
+  //$form['#attached']['library'][] = array('system', 'ui.dialog');
+ // $form['#attached']['css'][] = drupal_get_path('module', 'dcm_ajax_example') . '/dcm_ajax_example.css';
+
+  return $form;
+}
+
+/**
+ * Ajax callback for example form.
+ */
+function dcm_ajax_example_form_ajax_callback($form, $form_state) {
+  if (!form_get_errors()) {
+
+    $age = $form_state['values']['age'];
+    if (!$age) {
+      // If less than 18 years old - access denied!
+      return MENU_ACCESS_DENIED;
+    }
+
+    $form = drupal_get_form('dcm_ajax_multistep_form');
+  }
+  return $form;
+}
+
+/**
+ * Accept or deny terms of use form.
+ */
+function dcm_ajax_example_accept_terms_form($form, $form_state) {
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('I agree'),
+    '#ajax' => array(
+      'callback' => 'dcm_ajax_example_accept_terms_form_ajax_callback',
+    ),
+  );
+
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('I disagree'),
+    '#ajax' => array(
+      'callback' => 'dcm_ajax_example_accept_terms_form_ajax_callback',
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * AJAX callback for example accept terms form.
+ */
+function dcm_ajax_example_accept_terms_form_ajax_callback($form, $form_state) {
+  $values = $form_state['values'];
+
+  // Collect AJAX Framework commands.
+  $commands = array();
+
+  if ($values['op'] == $values['submit']) {
+    $commands[] = ajax_command_invoke('#example-form-popup', 'dialog', array('close'));
+    $commands[] = ajax_command_invoke('input[name="terms"]', 'click');
+  }
+  else {
+
+    drupal_set_message(t('You are not allowed to view next step.'), 'warning');
+
+    ctools_include('ajax');
+    $commands[] = ctools_ajax_command_redirect('<front>');
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+function dcm_ajax_multistep_form($form, &$form_state) {
+
+  // Add wrapper for form.
+  $form['#prefix'] = '<div id="dcm-ajax-multistep-form-wrapper">';
+  $form['#suffix'] = '</div>';
+
+  $form['#action'] = 'dcm_ajax_example';
+  $form['#tree'] = TRUE;
+
+  $step = empty($form_state['storage']['step']) ? 1 : $form_state['storage']['step'];
+  $form_state['storage']['step'] = $step;
+
+  switch ($step) {
+    case 1:
+
+      $form['step1'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Step 1. Title.'),
+      );
+
+      $form['step1']['title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Enter node title'),
+        '#required' => TRUE,
+      );
+
+      if (isset($form_state['values']['step1']['title'])) {
+        $form['step1']['title']['#default_value'] = $form_state['values']['step1']['title'];
+      }
+
+      break;
+
+    case 2:
+
+      $form['step2'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Step 2. Content'),
+      );
+
+      $form['step2']['content'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Enter node body'),
+        '#required' => TRUE,
+      );
+
+      if (isset($form_state['values']['step2']['content'])) {
+        $form['step2']['content']['#default_value'] = $form_state['values']['step2']['content'];
+      }
+
+      break;
+
+    case 3:
+
+      $form['step3'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Step 3. Comments'),
+        '#prefix' => '<div id="dcm-example-step3-wrapper">',
+        '#suffix' => '</div>',
+      );
+
+      $form['step3']['comment'] = array(
+        '#type' => 'radios',
+        '#title' => t('Add a comment to node?'),
+        '#options' => array(
+          0 => t('No'),
+          1 => t('Yes'),
+        ),
+        '#ajax' => array(
+          'callback' => 'dcm_ajax_multistep_form_ajax_callback',
+          'wrapper' => 'dcm-ajax-multistep-form-wrapper',
+        ),
+      );
+
+      if (isset($form_state['values']['step3']['comment']) && $form_state['values']['step3']['comment'] == 1) {
+        $form['step3']['comment_body'] = array(
+          '#type' => 'textarea',
+          '#title' => t('Comment body'),
+          '#required' => TRUE,
+        );
+      }
+
+      break;
+  }
+
+  $form['actions'] = array('#type' => 'actions');
+
+  if ($step > 1) {
+    $form['actions']['prev'] = array(
+      '#type' => 'submit',
+      '#value' => t('Previous step'),
+      '#limit_validation_errors' => array(),
+      '#submit' => array('dcm_ajax_multistep_form_submit'),
+      '#ajax' => array(
+        'callback' => 'dcm_ajax_multistep_form_ajax_callback',
+        'wrapper' => 'dcm-ajax-multistep-form-wrapper',
+      ),
+    );
+  }
+
+  if ($step < 3) {
+    $form['actions']['next'] = array(
+      '#type' => 'submit',
+      '#value' => t('Next step'),
+      '#ajax' => array(
+        'callback' => 'dcm_ajax_multistep_form_ajax_callback',
+        'wrapper' => 'dcm-ajax-multistep-form-wrapper',
+      ),
+    );
+  }
+
+  if ($step == 3) {
+    $form['actions']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Create node'),
+      '#ajax' => array(
+        'callback' => 'dcm_ajax_multistep_form_ajax_callback',
+        'wrapper' => 'dcm-ajax-multistep-form-wrapper',
+      ),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * Ajax callback for reloading ajax example form.
+ */
+function dcm_ajax_multistep_form_ajax_callback($form, $form_state) {
+  return $form;
+}
+
+function dcm_ajax_multistep_form_submit($form, &$form_state) {
+
+  $current_step = 'step' . $form_state['storage']['step'];
+  if (!empty($form_state['values'][$current_step])) {
+    $form_state['storage']['values'][$current_step] = $form_state['values'][$current_step];
+  }
+
+  if (isset($form['actions']['next']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['next']['#value']) {
+    $form_state['storage']['step']++;
+    $step_name = 'step' . $form_state['storage']['step'];
+    if (!empty($form_state['storage']['values'][$step_name])) {
+      $form_state['values'][$step_name] = $form_state['storage']['values'][$step_name];
+    }
+  }
+
+  if (isset($form['actions']['prev']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['prev']['#value']) {
+    $form_state['storage']['step']--;
+    $step_name = 'step' . $form_state['storage']['step'];
+    $form_state['values'][$step_name] = $form_state['storage']['values'][$step_name];
+  }
+
+  if (isset($form['actions']['submit']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['submit']['#value']) {
+    $storage = $form_state['storage']['values'];
+    $data = array_merge($storage['step1'], $storage['step2'], $storage['step3']);
+    $nid = _dcm_ajax_example_create_node($data);
+
+    // Go to created node.
+    ctools_include('ajax');
+    ctools_add_js('ajax-responder');
+    $commands = array();
+    $commands[] = ctools_ajax_command_redirect('node/' . $nid);
+    print ajax_render($commands);
+    exit;
+  }
+
+  $form_state['rebuild'] = TRUE;
+}
+
+function _dcm_ajax_example_create_node($data) {
+  global $user;
+
+  // Create new node.
+  $node = new stdClass();
+  $node->type  = 'page';
+  $node->title = $data['title'];
+  $node->body[LANGUAGE_NONE][0]['value'] = $data['content'];
+  $node->uid = $user->uid;
+  $node->status = NODE_PUBLISHED;
+  $node->comment = COMMENT_NODE_OPEN;
+  $node->language = LANGUAGE_NONE;
+  node_save($node);
+
+  if ($data['comment'] == 1) {
+    // Create comment to new node.
+    $comment = new stdClass();
+    $comment->uid = $user->uid;
+    $comment->nid = $node->nid;
+    $comment->status = COMMENT_PUBLISHED;
+    $comment->language = LANGUAGE_NONE;
+    $comment->comment_body[LANGUAGE_NONE][0]['value'] = $data['comment_body'];
+    comment_save($comment);
+  }
+
+  return $node->nid;
+}

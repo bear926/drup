@@ -1,0 +1,5 @@
+name = regExp
+description = Parse files.
+core = 7.x
+
+

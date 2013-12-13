@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * Create forms with ajax frameworks.
+ */
+ 
+
+/**
+ * Implementation of hook_menu().
+ */
+function my_ajax_menu() {
+  $items['fajax'] = array(  
+    'title' => 'Ajax', 
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('my_ajax_forms'),
+    'access callback' => TRUE,
+  ); 
+  return $items;
+}
+
+ 
+function my_ajax_forms($form, &$form_state) {
+  $form = array();
+  $form['fild'] = array(
+    '#type'  => 'textfield',
+  );
+  $form['submit'] = array(
+    '#type'  => 'submit',
+    '#value' => t('Add text'),
+    '#ajax' => array(
+      'callback' => 'my_ajax_forms_callback',
+      'wrapper' => 'lif',
+    ),
+  );
+  //global $TEXT;
+  //$TEXT = array();
+  
+  $form['replace'] = array(
+    '#prefix' => "<ul id='lif'>",
+    '#suffix' => '</ul>',
+  );
+  return $form;
+}
+
+function my_ajax_forms_callback($form, $form_state) {
+  if ($form_state['values']['step'])
+
+  $s = $form_state['values']['fild'];
+  $t = "<ul id='lif'><li>$s</li></ul>";
+  $form_state['values']['step'] = 1;
+  return $t;
+} 
+
+
+/**
+ * Implementation of hook_permission().
+ */
+function my_ajax_permission() {
+  return array(
+    'administer my_ajax' => array(
+      'title' => t('Administer my_ajax'),
+      'description' => t('Access to view this content is denied.'),
+    ),
+  );
+}

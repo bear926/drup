@@ -1,0 +1,5 @@
+name = My Ajax
+description = Realis Ajax functional.
+core = 7.x
+package = Fields
+

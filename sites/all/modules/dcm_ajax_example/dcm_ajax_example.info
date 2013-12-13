@@ -1,0 +1,4 @@
+name = Drupal AJAX example.
+description = Demo of AJAX power developed by.
+core = 7.x
+dependencies[] = ctools

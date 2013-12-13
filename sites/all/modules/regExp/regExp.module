@@ -1,0 +1,145 @@
+<?php
+
+/**
+ * @file
+ * Create forms for download and parse fail..
+ */
+ 
+
+/**
+ * Implementation of hook_menu().
+ */
+function regExp_menu() {
+  $items['parse'] = array(  
+    'title' => 'Parse', 
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('regExp_form'),
+    'access callback' => TRUE,
+  ); 
+  return $items;
+}
+ 
+
+/**
+ * Implementation of hook_permission().
+ */
+function regExp_permission() {
+  return array(
+    'administer regExp' => array(
+      'title' => t('Administer regExp'),
+      'description' => t('Access to view this content is denied.'),
+    ),
+  );
+}
+
+
+/**
+ * Create  form.
+ */
+function regExp_form($form, &$form_state) {
+  $form = array();
+   $form['file'] = array(
+    '#type' => 'file',
+    '#title' => 'File',
+    '#description' => 'Download file  for parse',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+  );
+  return $form;
+}
+
+
+/**
+ * Validate function for myforms. 
+ */ 
+function regExp_form_validate($form, &$form_state){
+  $validators = array(
+    'file_validate_extensions' => array('php txt'), 
+  );
+  if ($file = file_save_upload('file', $validators, 'public://')) {
+    $form_state['values']['file'] = $file; 
+  }
+  else {
+    form_set_error('file', 'Error fail no download');
+  }
+}
+
+
+/**
+ * Submit function for myforms.
+ */
+function regExp_form_submit($form, &$form_state) { 
+  //dpm ($content);
+  $file = $form_state['values']['file'];
+  $uri = $form_state['values']['file']->uri;
+  $sub = file_get_contents($uri);
+  if ($sub) {
+    file_delete($file);
+  }
+
+ 
+  drupal_set_message(printer($sub));
+  //$print = theme('printer', array('rezC' => $rezC, 'rezM' => $rezM, 'rezP' => $rezP, ));
+  //dpm($sub);
+  //$form_state['redirect'] = 'printer';
+}
+
+
+/**
+ * Print all class method properties.
+ *
+ * @param string $sub.
+ * String with download fail.
+ *
+ */
+function printer($sub){
+  $regC = '/(class|extends)\s([A-Za-z0-9]+)/m';
+  preg_match_all($regC, $sub, $rezC);
+
+  $regM = '/function\s([A-Za-z0-9_]+)(\(\))*/m';
+  preg_match_all($regM, $sub, $rezM);
+
+  $regP = '/public\s([A-Za-z0-9_$$\;]+)/m';
+  preg_match_all($regP, $sub, $rezP);
+
+  $closp = '</p>';
+  $class = NULL;
+  $method = NULL;
+  $property = NULL;
+  //Echo Classes.
+  $Dc = '<p>Download files has been Classes:';
+  $truRezC = array_unique($rezC[2]);
+  foreach ($truRezC as $v) {
+    $class .= "<br />&#160;&#160;$v";
+  }
+  //Echo Methods.
+  $Dm = '<p>Download files has been Methods:';
+  $truRezM = array_unique($rezM[1]);
+  foreach ($truRezM as $v) {
+    $method .= "<br />&#160;&#160;$v();";
+  }
+  //Echo V.
+  $Dp = '<p>Download files has been Property:';
+  $truRezP = array_unique($rezP[1]);
+  foreach ($truRezP as $v) {
+    $property .=  "<br />&#160;&#160;$v";
+  }
+  return $Dc . $class . $Dm . $method . $Dp . $property;
+
+}
+
+function regExp_theme() {
+  return array(
+    'printer' => array(
+      'variables' => array(
+          'rezC' => NULL,
+          'rezM' => NULL,
+          'rezP' => NULL, 
+      ),
+      'template' => 'regExp',
+    ),
+  );     
+}
+
