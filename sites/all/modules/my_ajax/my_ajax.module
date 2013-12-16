@@ -16,41 +16,87 @@ function my_ajax_menu() {
     'page arguments' => array('my_ajax_forms'),
     'access callback' => TRUE,
   ); 
+  $items['proces_ajax'] = array(  
+    'page callback' => 'my_ajax_ajax_callback',
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  ); 
+  $items['proces_ajax_del/%'] = array(  
+    'page callback' => 'my_ajax_del_callback',
+    'page arguments' => array(1),
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  ); 
   return $items;
 }
 
- 
+/**
+ * Function create form.
+ */
 function my_ajax_forms($form, &$form_state) {
   $form = array();
   $form['fild'] = array(
     '#type'  => 'textfield',
+    '#title' => 'Enter text.',
   );
   $form['submit'] = array(
     '#type'  => 'submit',
     '#value' => t('Add text'),
     '#ajax' => array(
-      'callback' => 'my_ajax_forms_callback',
-      'wrapper' => 'lif',
+      'path' => 'proces_ajax',
     ),
   );
-  //global $TEXT;
-  //$TEXT = array();
-  
   $form['replace'] = array(
-    '#prefix' => "<ul id='lif'>",
-    '#suffix' => '</ul>',
+    '#markup' => "<ul id='lif'></ul>",
   );
   return $form;
 }
 
-function my_ajax_forms_callback($form, $form_state) {
-  if ($form_state['values']['step'])
+/**
+ * Function add text with form via ajax framework.
+ */
+function my_ajax_ajax_callback() {
+  ctools_include('ajax');
 
+  list($form, $form_state) = ajax_get_form('my_ajax_forms');
+  drupal_process_form($form['#form_id'], $form, $form_state);
   $s = $form_state['values']['fild'];
-  $t = "<ul id='lif'><li>$s</li></ul>";
-  $form_state['values']['step'] = 1;
-  return $t;
-} 
+
+  $commands = array();
+  if (!empty($s)) {
+    $hid = mt_rand(0, 100);
+    $link = l(t('delete'), "proces_ajax_del/$hid/nojs", array('attributes' => array('class' => 'use-ajax')));
+    $commands[] = ajax_command_append('#lif', "<li id='$hid'>$s $link</li>");
+    $commands[] = ctools_ajax_command_attr("input[name='fild']", 'value', '');
+  }
+  else {
+    $alert = t('Enter text');
+    $commands[] = ajax_command_alert("$alert");
+  }
+  return array('#type' => 'ajax', '#commands' => $commands);
+  
+}
+
+
+/**
+ * Function delete text with form via ajax framework.
+ *
+ *@param $id string.
+ *   Which text id delete.
+ *
+ */
+function my_ajax_del_callback($id, $ajax = 'ajax') {
+  if ($ajax == 'ajax') {
+    $commands = array();
+    $commands[] = ajax_command_remove("#$id");
+    return array('#type' => 'ajax', '#commands' => $commands);
+  }
+
+}
 
 
 /**

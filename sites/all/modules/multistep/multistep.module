@@ -1,0 +1,186 @@
+<?php
+
+/**
+ * @file
+ * Create multistep forms with ajax frameworks.
+ */
+ 
+
+/**
+ * Implementation of hook_menu().
+ */
+function multistep_menu() { 
+  $items = array(); 
+  $items['multistep_example'] = array(
+    'title' => 'Multi-step ajax form example',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('multistep_form'),
+    'access callback' => TRUE,
+  );
+ 
+  return $items;
+}
+
+/**
+ * Create ajax form.
+ */
+function multistep_form($form, &$form_state) {
+
+  $form['#prefix'] = '<div id="multistep-example-form-wrapper">';
+  $form['#suffix'] = '</div>';
+
+  $form['#tree'] = TRUE;
+ 
+
+  $step = empty($form_state['storage']['step']) ? 1 : $form_state['storage']['step'];
+  $form_state['storage']['step'] = $step;
+ 
+  switch ($step) {
+    case 1:
+    $default_value_login = empty($form_state['values']['step1']) ? '' : $form_state['values']['step1'];
+      // Form for one step.
+      $form['step1']['name'] = array(
+        '#type' => 'textfield', 
+        '#title' => 'Enter you login',
+        '#required' => TRUE,
+        '#default_value' => $default_value_login,
+      );
+      break;
+ 
+    case 2:
+      $default_value_mail = empty($form_state['values']['step2']) ? '' : $form_state['values']['step2'];
+      // Form for two step.
+       $form['step2']['email'] = array(
+        '#type' => 'textfield', 
+        '#title' => 'Enter you email',
+        '#default_value' => $default_value_mail,
+        '#required' => TRUE,
+      );
+      break;
+ 
+    case 3: 
+      $default_value_name = empty($form_state['values']['step3']['name']) ? '' : $form_state['values']['step3']['name'];
+      // Form for three step.
+      $form['step3']['name'] = array(
+        '#type' => 'textfield', 
+        '#title' => 'Enter you Name',
+        '#default_value' => $default_value_name,
+        '#required' => TRUE,
+      );
+ 
+      $default_value_lname = empty($form_state['values']['step3']['lname']) ? '' : $form_state['values']['step3']['lname'];
+      // Form for three step.
+      $form['step3']['lname'] = array(
+        '#type' => 'textfield', 
+        '#title' => 'Enter you LastName',
+        '#default_value' => $default_value_laname,
+        '#required' => TRUE,
+      );
+      break;
+  }
+ 
+  $form['actions'] = array(
+    '#type' => 'actions'
+  );
+  //Last submit 'OK'.
+  if ($step == 3) {
+    $form['actions']['submit'] = array(
+      '#type' => 'submit', 
+      '#value' => 'OK',
+    );
+  }
+  // Submit previos step.
+  if ($step > 1) {
+    $form['actions']['prev'] = array(
+      '#type' => 'submit', 
+      '#value' => '<<< Previos step',    
+      '#limit_validation_errors' => array(),
+      '#submit' => array('multistep_form_submit'), 
+      '#ajax' => array(
+        'wrapper' => 'multistep-example-form-wrapper', 
+        'callback' => 'multistep_ajax_callback',
+      ),
+    );
+  }
+  // Submit next step.
+  if ($step < 3) {
+    $form['actions']['next'] = array(
+      '#type' => 'submit', 
+      '#value' => 'Next step >>>', 
+     
+      '#ajax' => array(
+        'wrapper' => 'multistep-example-form-wrapper', 
+        'callback' => 'multistep_ajax_callback',
+      ),
+    );
+  }
+ 
+  return $form;
+}
+
+
+/**
+ * Ajax function.
+ */
+function multistep_ajax_callback($form, $form_state) {
+  return $form;
+}
+
+
+function multistep_form_submit($form, &$form_state) {
+ 
+  // Save form where next step.
+  $current_step = 'step' . $form_state['storage']['step'];
+  if (!empty($form_state['values'][$current_step])) {
+    $form_state['storage']['values'][$current_step] = $form_state['values'][$current_step];
+  }
+ 
+  // ++ step.
+  if (isset($form['actions']['next']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['next']['#value']) {
+    $form_state['storage']['step']++;
+ 
+    
+    $step_name = 'step' . $form_state['storage']['step'];
+    if (!empty($form_state['storage']['values'][$step_name])) {
+      $form_state['values'][$step_name] = $form_state['storage']['values'][$step_name];
+    }
+  }
+ 
+  // -- step.
+  if (isset($form['actions']['prev']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['prev']['#value']) {
+    $form_state['storage']['step']--;
+ 
+    // Views previos step.
+    $step_name = 'step' . $form_state['storage']['step'];
+    $form_state['values'][$step_name] = $form_state['storage']['values'][$step_name];
+  }
+ 
+  //
+  if (isset($form['actions']['submit']['#value']) && $form_state['triggering_element']['#value'] == $form['actions']['submit']['#value']) {
+    // Views massage 
+    $message = 'You data: <br/>';  
+    foreach ($form_state['storage']['values'] as $step => $values) {
+      $message .= "<br/>$step: <br/>";
+      foreach ($values as $key => $value) {
+        $output = '';
+        if (is_array($value)) {
+          foreach ($value as $val) {
+            $output .= $val ? $val . '; ' : '';
+          }
+          $value = implode(', ', $value);
+        }
+        else {
+          $output = $value;
+        }
+        $message .= "$key = $output<br/>";
+      }
+ 
+    }
+    drupal_set_message($message);  
+    $form_state['rebuild'] = FALSE;
+    return;
+  }
+ 
+  // Rebuild form.
+  $form_state['rebuild'] = TRUE;
+}
